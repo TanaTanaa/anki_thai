@@ -48,6 +48,8 @@
       min-height: 24px;
     }
   </style>
+  <!-- LZ-string ライブラリ読み込み -->
+  <script src="https://cdn.jsdelivr.net/npm/lz-string@1.4.4/libs/lz-string.min.js"></script>
 </head>
 <body>
   <h1>ことばクイズ</h1>
@@ -266,17 +268,38 @@
     nextQuestion();
   }
 
+  // 圧縮版URL生成
   function shareURL() {
     if (originalVocab.length === 0) return alert("たんごを ついかしてください");
     const json = JSON.stringify(originalVocab);
-    const encoded = encodeURIComponent(btoa(unescape(encodeURIComponent(json))));
-    const url = `${location.origin}${location.pathname}?data=${encoded}`;
+    const compressed = LZString.compressToEncodedURIComponent(json);
+    const url = `${location.origin}${location.pathname}?data=${compressed}`;
     const input = document.getElementById("shareURL");
-    input.value = url; input.select();
+    input.value = url;
+    input.select();
     navigator.clipboard.writeText(url);
     alert("URLを コピーしました");
   }
 
+  // 圧縮版URLから読み込み
+  function loadFromURL() {
+    const p = new URLSearchParams(location.search).get("data");
+    if (p) {
+      try {
+        const decompressed = LZString.decompressFromEncodedURIComponent(p);
+        originalVocab = JSON.parse(decompressed);
+        vocab = originalVocab.map((w, i) => Object.assign({}, w, { __originalIndex: i }));
+        document.getElementById("edit-area").classList.add("hide");
+        document.getElementById("quizCard").classList.remove("hide");
+        switchUIToThai();
+        startQuiz();
+      } catch {
+        alert("URLの ないようが こわれています");
+      }
+    }
+  }
+
+  // URL共有時のみUIをタイ語に切り替え
   function switchUIToThai() {
     document.querySelector("h1").textContent = "เกมคำศัพท์";
     document.querySelector("button[onclick='showAnswer()']").textContent = "ดูคำตอบ";
@@ -286,25 +309,8 @@
     document.querySelector("button[onclick='startQuiz()']").textContent = "เริ่มเกมคำถาม";
     document.querySelector("button[onclick='startRetest()']").textContent = "ลองคำถามที่ผิดใหม่";
     document.querySelector("button[onclick='startEverWrongQuiz()']").textContent = "ทบทวนคำที่เคยผิด";
-    document.querySelector("select#quizType option[value='thaiToJapanese']").textContent = "A → B";
-    document.querySelector("select#quizType option[value='japaneseToThai']").textContent = "B → A";
-  }
-
-  function loadFromURL() {
-    const p = new URLSearchParams(location.search).get("data");
-    if (p) {
-      try {
-        const decoded = decodeURIComponent(escape(atob(decodeURIComponent(p))));
-        originalVocab = JSON.parse(decoded);
-        vocab = originalVocab.map((w, i) => Object.assign({}, w, { __originalIndex: i }));
-        document.getElementById("edit-area").classList.add("hide");
-        document.getElementById("quizCard").classList.remove("hide");
-        switchUIToThai(); // ← UIをタイ語にする
-        startQuiz();
-      } catch {
-        alert("URLの ないようが こわれています");
-      }
-    }
+    document.querySelector("select#quizType option[value='thaiToJapanese']").textContent = "ไทย → ญี่ปุ่น";
+    document.querySelector("select#quizType option[value='japaneseToThai']").textContent = "ญี่ปุ่น → ไทย";
   }
 
   window.onload = loadFromURL;
